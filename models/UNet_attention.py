@@ -28,7 +28,7 @@ def init_weights(net, init_type='xavier_uniform_', gain=1.0):
             init.constant_(m.weight.data, 1.0)
             init.constant_(m.bias.data, 0.0)
 
-    print('Initialize network with %s' % init_type)
+    #print('Initialize network with %s' % init_type)
     net.apply(init_func)
 
 
@@ -146,37 +146,29 @@ class Att_UNet(nn.Module):
         
         self.Maxpool = nn.MaxPool3d(kernel_size=2,stride=2)
 
-        self.Conv1 = conv_block(ch_in=img_ch,ch_out=16, normalize=normalize)
-        self.Conv2 = conv_block(ch_in=16,ch_out=32, normalize=normalize)
-        self.Conv3 = conv_block(ch_in=32,ch_out=64, normalize=normalize)
-        self.Conv4 = conv_block(ch_in=64,ch_out=128, normalize=normalize)
-        self.Conv5 = conv_block(ch_in=128,ch_out=256, normalize=normalize)
-        self.Conv6 = conv_block(ch_in=256,ch_out=512, normalize=normalize)
+        self.Conv1 = conv_block(ch_in=img_ch,ch_out=32, normalize=normalize)
+        self.Conv2 = conv_block(ch_in=32,ch_out=64, normalize=normalize)
+        self.Conv3 = conv_block(ch_in=64,ch_out=128, normalize=normalize)
+        self.Conv4 = conv_block(ch_in=128,ch_out=256, normalize=normalize)
+        self.Conv5 = conv_block(ch_in=256,ch_out=512, normalize=normalize)
 
-        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
-        self.Up7 = up_conv(ch_in=512,ch_out=512, normalize=normalize, scale_factor=(3,4,4))
+        self.Up5 = up_conv(ch_in=512,ch_out=256, normalize=normalize)
+        self.Att5 = Attention_block(F_g=256,F_l=256,F_int=128, normalize=normalize)
+        self.Up_conv5 = conv_block(ch_in=512, ch_out=256, normalize=normalize)
 
-        self.Up6 = up_conv(ch_in=512,ch_out=256, normalize=normalize)
-        self.Att6 = Attention_block(F_g=256,F_l=256,F_int=128, normalize=normalize)
-        self.Up_conv6 = conv_block(ch_in=512, ch_out=256, normalize=normalize)
-
-        self.Up5 = up_conv(ch_in=256,ch_out=128, normalize=normalize)
-        self.Att5 = Attention_block(F_g=128,F_l=128,F_int=64, normalize=normalize)
-        self.Up_conv5 = conv_block(ch_in=256, ch_out=128, normalize=normalize)
-
-        self.Up4 = up_conv(ch_in=128,ch_out=64, normalize=normalize)
-        self.Att4 = Attention_block(F_g=64,F_l=64,F_int=32, normalize=normalize)
-        self.Up_conv4 = conv_block(ch_in=128, ch_out=64, normalize=normalize)
+        self.Up4 = up_conv(ch_in=256,ch_out=128, normalize=normalize)
+        self.Att4 = Attention_block(F_g=128,F_l=128,F_int=64, normalize=normalize)
+        self.Up_conv4 = conv_block(ch_in=256, ch_out=128, normalize=normalize)
         
-        self.Up3 = up_conv(ch_in=64,ch_out=32, normalize=normalize)
-        self.Att3 = Attention_block(F_g=32,F_l=32,F_int=16, normalize=normalize)
-        self.Up_conv3 = conv_block(ch_in=64, ch_out=32, normalize=normalize)
+        self.Up3 = up_conv(ch_in=128,ch_out=64, normalize=normalize)
+        self.Att3 = Attention_block(F_g=64,F_l=64,F_int=32, normalize=normalize)
+        self.Up_conv3 = conv_block(ch_in=128, ch_out=64, normalize=normalize)
         
-        self.Up2 = up_conv(ch_in=32,ch_out=16, normalize=normalize)
-        self.Att2 = Attention_block(F_g=16,F_l=16,F_int=8, normalize=normalize, num_groups=8)
-        self.Up_conv2 = conv_block(ch_in=32, ch_out=16, normalize=normalize)
+        self.Up2 = up_conv(ch_in=64,ch_out=32, normalize=normalize)
+        self.Att2 = Attention_block(F_g=32,F_l=32,F_int=16, normalize=normalize, num_groups=8)
+        self.Up_conv2 = conv_block(ch_in=64, ch_out=32, normalize=normalize)
 
-        self.Conv_1x1 = nn.Conv3d(16, output_ch, kernel_size=1, stride=1,padding=0)
+        self.Conv_1x1 = nn.Conv3d(32, output_ch, kernel_size=1, stride=1,padding=0)
 
     def forward(self,x):
         # encoding path
@@ -194,18 +186,9 @@ class Att_UNet(nn.Module):
         x5 = self.Maxpool(x4)
         x5 = self.Conv5(x5)
 
-        x6 = self.Maxpool(x5)
-        x6 = self.Conv6(x6)
-
-        x7 = self.avgpool(x6)
-        d7 = self.Up7(x7)
         # decoding + concat path
-        d6 = self.Up6(d7) 
-        x5 = self.Att6(g=d6,x=x5)
-        d6 = torch.cat((x5,d6),dim=1)
-        d6 = self.Up_conv6(d6)
 
-        d5 = self.Up5(d6)
+        d5 = self.Up5(x5)
         x4 = self.Att5(g=d5,x=x4)
         d5 = torch.cat((x4,d5),dim=1)        
         d5 = self.Up_conv5(d5)
@@ -227,4 +210,4 @@ class Att_UNet(nn.Module):
 
         d1 = self.Conv_1x1(d2)
 
-        return d1, x7
+        return d1, x5

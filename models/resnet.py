@@ -194,12 +194,12 @@ class ResNet(nn.Module):
         x = self.relu(x)
         if not self.no_max_pool:
             x = self.maxpool(x)
-
+        
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-
+        
         x = self.avgpool(x)
 
         x = x.view(x.size(0), -1)
